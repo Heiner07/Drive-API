@@ -34,13 +34,22 @@ namespace DriveAPI.Services
 
                 if (folder == null) return null;
 
-                relativeFilePath = await _userFilesService.SaveFile(formFile: request.File, parentFolder: folder.PathOrUrl);
+                relativeFilePath = await _userFilesService.SaveFile(
+                    formFile: request.File,
+                    relativeParentFolderPath: folder.PathOrUrl,
+                    parentFolderId: folder.Id
+                );
             }
             else
             {
-                // IMPORTANT: When the parentFolder is null, the parent folder will be the user id
-                // For example: If the user id is 5, the file path will be "5/fileName.extension"
-                relativeFilePath = await _userFilesService.SaveFile(formFile: request.File, parentFolder: userId.ToString());
+                // IMPORTANT: When the parentFolder is null, the relativeParentFolderPath will be the user id
+                // and the parentFolderId (only for the relativeFilePath) will be 0.
+                // For example: If the user id is 5, the file path will be "5/0-fileName.extension"
+                relativeFilePath = await _userFilesService.SaveFile(
+                    formFile: request.File,
+                    relativeParentFolderPath: userId.ToString(),
+                    parentFolderId: 0
+                );
             }
 
             if (relativeFilePath == null) return null;
@@ -76,13 +85,22 @@ namespace DriveAPI.Services
 
                 if (folder == null) return null;
 
-                relativeFolderPath = await _userFilesService.CreateFolder(folderName: request.Name, parentFolder: folder.PathOrUrl);
+                relativeFolderPath = await _userFilesService.CreateFolder(
+                    folderName: request.Name,
+                    relativeParentFolderPath: folder.PathOrUrl,
+                    parentFolderId: folder.Id
+                );
             }
             else
             {
-                // IMPORTANT: When the parentFolder is null, the parent folder will be the user id
-                // For example: If the user id is 5, the new folder's path will be "5/newFolder/"
-                relativeFolderPath = await _userFilesService.CreateFolder(folderName: request.Name, parentFolder: userId.ToString());
+                // IMPORTANT: When the parentFolder is null, the relativeParentFolderPath will be the user id
+                // and the parentFolderId (only for the relativeFilePath) will be 0.
+                // For example: If the user id is 5, the new folder's path will be "5/0-newFolder/"
+                relativeFolderPath = await _userFilesService.CreateFolder(
+                    folderName: request.Name,
+                    relativeParentFolderPath: userId.ToString(),
+                    parentFolderId: 0
+                );
             }
 
             if (relativeFolderPath == null) return null;
@@ -142,14 +160,67 @@ namespace DriveAPI.Services
             return null;
         }
 
-        public Task<Register> EditRegister(int userId, Register request)
+        public async Task<Register> ChangeRegisterName(int userId, ChangeRegisterNameRequest request)
         {
-            throw new NotImplementedException();
+            var registerToChange = await _context.Register.Where(
+                register => register.Id == request.RegisterId && register.Author == userId
+            ).FirstOrDefaultAsync();
+
+            if (registerToChange == null) return null;
+
+            var newRelativePath = GenerateNewRelativePathForChangeName(registerToChange, request.NewName);
+
+            if (registerToChange.IsFolder)
+            {
+                //Rename the folder with the service.
+                var folderChanged = await _userFilesService.MoveOrRenameFolder(registerToChange.PathOrUrl, newRelativePath);
+
+                if (!folderChanged) return null;
+
+                // Change the name of the register
+                registerToChange.Name = request.NewName;
+                //Replace the relative path of the register and its subregisters (recursively)
+                await ChangeRelativePathOfSubRegisters(
+                    register: registerToChange,
+                    oldRelativePath: registerToChange.PathOrUrl,
+                    newRelativePath: newRelativePath
+                );
+            }
+            else
+            {
+                // Rename the file with the service.
+                var fileChanged = await _userFilesService.MoveOrRenameFile(registerToChange.PathOrUrl, newRelativePath);
+
+                if (!fileChanged) return null;
+
+                // Change the name and the path of the register.
+                registerToChange.Name = request.NewName;
+                registerToChange.PathOrUrl = registerToChange.PathOrUrl.Replace(
+                    registerToChange.PathOrUrl, newRelativePath
+                );
+
+                _context.Register.Update(registerToChange);
+            }
+
+            var entriesWritten = await _context.SaveChangesAsync();
+
+            // To prevent a possible object cycle when serialize this object in the controller's response
+            registerToChange.InverseParentFolderNavigation = null;
+
+            if (entriesWritten > 0) return registerToChange;
+
+            return null;
         }
 
-        public Task<IEnumerable<Register>> GetAllRegisters(int userId)
+        public async Task<IEnumerable<Register>> GetSubRegistersFromFolder(int userId, int? folderId)
         {
-            throw new NotImplementedException();
+            var subRegisters = await _context.Register.Where(
+                    r => r.ParentFolder == folderId && r.Author == userId
+                ).AsNoTracking().ToArrayAsync();
+
+            if (subRegisters == null) return null;
+
+            return subRegisters;
         }
 
         public async Task<Register> GetRegister(int userId, int registerId)
@@ -205,6 +276,16 @@ namespace DriveAPI.Services
             );
         }
 
+        public async Task<int?> GetParentFolderForRegister(int registerId)
+        {
+            var register = await _context.Register.Where(r => r.Id == registerId)
+                .AsNoTracking().FirstOrDefaultAsync();
+
+            if (register == null) return null;
+
+            return register.ParentFolder;
+        }
+
         /// <summary>
         /// Deletes the register specified and its sub registers (folders and files) recursively
         /// </summary>
@@ -223,6 +304,33 @@ namespace DriveAPI.Services
             }
 
             _context.Register.Remove(register);
+        }
+
+        private async Task ChangeRelativePathOfSubRegisters(Register register, string oldRelativePath, string newRelativePath)
+        {
+            var subRegisters = await _context.Register.Where(r => r.ParentFolder == register.Id).ToArrayAsync();
+
+            if (subRegisters.Any())
+            {
+                foreach (var subRegister in subRegisters)
+                {
+                    await ChangeRelativePathOfSubRegisters(subRegister, oldRelativePath, newRelativePath);
+                }
+            }
+
+            register.PathOrUrl = register.PathOrUrl.Replace(oldRelativePath, newRelativePath);
+
+            _context.Register.Update(register);
+        }
+
+        private string GenerateNewRelativePathForChangeName(Register registerToChange, string newName)
+        {
+            // 0 for user's root folder
+            int parentFolderId = registerToChange.ParentFolder ?? 0;
+            return registerToChange.PathOrUrl.Replace(
+                $"{parentFolderId}-{registerToChange.Name}",
+                $"{parentFolderId}-{newName}"
+            );
         }
     }
 }

@@ -47,12 +47,14 @@ namespace DriveAPI.Controllers
 
             // Check is the register does belong to the user
             // If the register is null, the folder is the user's root folder
-            if (!registerId.HasValue || !await _registerService.DoesRegisterBelongToUser(userId, registerId.Value))
+            if (registerId.HasValue && !await _registerService.DoesRegisterBelongToUser(userId, registerId.Value))
                 return BadRequest();
 
-            //ToDo: Perform the GetRegisterFromFolder;
+            var subRegisters = await _registerService.GetSubRegistersFromFolder(userId, folderId: registerId);
 
-            return await _context.Register.ToListAsync();
+            if (subRegisters == null) return NotFound();
+
+            return Ok(subRegisters);
         }
 
         // GET: api/Registers/5
@@ -88,6 +90,8 @@ namespace DriveAPI.Controllers
             if (!await _registerService.DoesRegisterBelongToUser(userId, registerId: id))
                 return BadRequest();
 
+            // IMPORTANT: At this time, only file downloads are allowed.
+            // ToDo: Download a complete folder.
             var fileToSend = await _registerService.GetFile(userId, registerId: id);
 
             if (fileToSend == null) return BadRequest(Texts.ERROR_PREPARING_ELEMENT_TO_DOWNLOAD);
@@ -99,36 +103,33 @@ namespace DriveAPI.Controllers
             );
         }
 
-        // PUT: api/Registers/5
-        // To protect from overposting attacks, enable the specific properties you want to bind to, for
-        // more details, see https://go.microsoft.com/fwlink/?linkid=2123754.
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutRegister(int id, Register register)
+        // PUT: api/Registers/ChangeName
+        [HttpPut("ChangeName")]
+        public async Task<IActionResult> ChangeRegisterName(ChangeRegisterNameRequest request)
         {
-            if (id != register.Id)
-            {
+            var userIdString = JWTUtility.GetUserId(User);
+            if (userIdString == null) return BadRequest();
+
+            var userId = int.Parse(userIdString);
+
+            // Check if the register does belong to the user.
+            if (!await _registerService.DoesRegisterBelongToUser(userId, registerId: request.RegisterId))
                 return BadRequest();
-            }
 
-            _context.Entry(register).State = EntityState.Modified;
+            // Check if the new name is valid.
+            if (!FileNameUtility.FileFolderNameIsValid(request.NewName))
+                return BadRequest(Texts.INVALID_FILE_NAME);
 
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!RegisterExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
+            // Check if the new name already exists in the parent folder.
+            var parentFolderId = await _registerService.GetParentFolderForRegister(request.RegisterId);
+            if (await _registerService.DoesFileOrFolderAlreadyExist(userId, name: request.NewName, parentFolder: parentFolderId))
+                return BadRequest(Texts.FILE_FOLDER_ALREADY_EXISTS);
 
-            return NoContent();
+            var registerChanged = await _registerService.ChangeRegisterName(userId, request);
+
+            if(registerChanged == null) return StatusCode(statusCode: 500, value: Texts.ERROR_MODIFYING_REGISTER);
+
+            return Ok(registerChanged);
         }
 
         // POST: api/Registers/AddFile

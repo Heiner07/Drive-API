@@ -36,16 +36,16 @@ namespace DriveAPI.Services
             return memoryStream.ToArray();
         }
 
-        public async Task<string> SaveFile(IFormFile formFile, string parentFolder)
+        public async Task<string> SaveFile(IFormFile formFile, string relativeParentFolderPath, int parentFolderId)
         {
             if(formFile.Length > 0 && FileNameUtility.FileFolderNameIsValid(name: formFile.FileName))
             {
-                var relativePath = Path.Combine(parentFolder, formFile.FileName);
+                var relativePath = Path.Combine(relativeParentFolderPath, $"{parentFolderId}-{formFile.FileName}");
                 var filePath = Path.Combine(
                     _env.ContentRootPath, _configuration["UsersFilesPath"], relativePath);
 
                 var parentFolderPath = Path.Combine(
-                    _env.ContentRootPath, _configuration["UsersFilesPath"], parentFolder);
+                    _env.ContentRootPath, _configuration["UsersFilesPath"], relativeParentFolderPath);
 
                 if (!Directory.Exists(parentFolderPath))
                 {
@@ -64,11 +64,11 @@ namespace DriveAPI.Services
             return null;
         }
 
-        public Task<string> CreateFolder(string folderName, string parentFolder)
+        public Task<string> CreateFolder(string folderName, string relativeParentFolderPath, int parentFolderId)
         {
             if (FileNameUtility.FileFolderNameIsValid(name: folderName))
             {
-                var relativePath = Path.Combine(parentFolder, folderName);
+                var relativePath = Path.Combine(relativeParentFolderPath, $"{parentFolderId}-{folderName}");
                 var folderPath = Path.Combine(
                     _env.ContentRootPath, _configuration["UsersFilesPath"], relativePath);
 
@@ -84,9 +84,34 @@ namespace DriveAPI.Services
             return null;
         }
 
-        public Task<bool> UpdateFile()
+        public Task<bool> MoveOrRenameFile(string oldRelativeFilePath, string newRelativeFilePath)
         {
-            throw new NotImplementedException();
+            var filePath = Path.Combine(
+                    _env.ContentRootPath, _configuration["UsersFilesPath"], oldRelativeFilePath);
+
+            var newFilePath = Path.Combine(
+                    _env.ContentRootPath, _configuration["UsersFilesPath"], newRelativeFilePath);
+
+            if (!File.Exists(filePath)) return Task.FromResult(false);
+
+            File.Move(filePath, newFilePath);
+
+            return Task.FromResult(true);
+        }
+
+        public Task<bool> MoveOrRenameFolder(string oldRelativeFolderPath, string newRelativeFolderPath)
+        {
+            var folderPath = Path.Combine(
+                    _env.ContentRootPath, _configuration["UsersFilesPath"], oldRelativeFolderPath);
+
+            var newFolderPath = Path.Combine(
+                    _env.ContentRootPath, _configuration["UsersFilesPath"], newRelativeFolderPath);
+
+            if (!Directory.Exists(folderPath)) return Task.FromResult(false);
+
+            Directory.Move(folderPath, newFolderPath);
+
+            return Task.FromResult(true);
         }
 
         public Task<bool> DeleteFile(string relativeFilePath)

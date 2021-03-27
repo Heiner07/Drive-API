@@ -17,5 +17,7 @@ namespace DriveAPI.Constants
         public const string ERROR_CREATING_FOLDER = "Error creating folder";
         public const string ERROR_DELETING_ELEMENT = "Error deleting element";
         public const string ERROR_PREPARING_ELEMENT_TO_DOWNLOAD = "Error preparing element to download";
+        public const string INVALID_NEW_NAME = "Invalid new name";
+        public const string ERROR_MODIFYING_REGISTER = "Error modifying the register";
     }
 }
