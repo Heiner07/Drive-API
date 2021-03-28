@@ -55,7 +55,21 @@ namespace DriveAPI.Services.Interfaces
         /// <returns>The Register added to the database, null if an error occurred</returns>
         Task<Register> AddFolder(int userId, int? parentFolder, AddFolderRequest request);
         
+        /// <summary>
+        /// Changes the name of a register and returns the modified register.
+        /// </summary>
+        /// <param name="userId">The user id</param>
+        /// <param name="request">The request with the necessary data to change the name</param>
+        /// <returns>The modified registers, or null if an error occurs</returns>
         Task<Register> ChangeRegisterName(int userId, ChangeRegisterNameRequest request);
+        
+        /// <summary>
+        /// Moves a register to a new folder and returns the moved register
+        /// </summary>
+        /// <param name="userId">The user id</param>
+        /// <param name="request">The request with necessary data to move the register</param>
+        /// <returns>The moved register, or null if an error occurs</returns>
+        Task<Register> MoveRegister(int userId, MoveRegisterRequest request);
 
         /// <summary>
         /// Deletes a register of the user. If the register is a folder,
@@ -81,5 +95,9 @@ namespace DriveAPI.Services.Interfaces
         Task<bool> DoesFileOrFolderAlreadyExist(int userId, string name, int? parentFolder);
 
         Task<int?> GetParentFolderForRegister(int registerId);
+        
+        Task<string> GetNameOfRegister(int registerId);
+
+        Task<bool> IsDestinyFolderASubFolderOfFolderToMove(int folderToMoveId, int destinyFolderId);
     }
 }

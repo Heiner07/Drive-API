@@ -44,8 +44,24 @@ namespace DriveAPI.Services.Interfaces
         /// otherwise returns null</returns>
         Task<string> CreateFolder(string folderName, string relativeParentFolderPath, int parentFolderId);
 
+        /// <summary>
+        /// Moves a file to a folder. If the origin folder (present in oldRelativeFilePath) is
+        /// equals to the destiny folder (present in the newRelativeFilePath), but with different
+        /// file name, this will result in a change of file name.
+        /// </summary>
+        /// <param name="oldRelativeFilePath">The path of the origin file</param>
+        /// <param name="newRelativeFilePath">The new path where will be located</param>
+        /// <returns>If the operation was successful</returns>
         Task<bool> MoveOrRenameFile(string oldRelativeFilePath, string newRelativeFilePath);
 
+        /// <summary>
+        /// Moves a folder to another folder. If the origin folder (present in oldRelativeFolderPath) is
+        /// equals to the destiny folder (present in the newRelativeFolderPath), but with different
+        /// name, this will result in a change of folder name.
+        /// </summary>
+        /// <param name="oldRelativeFolderPath">The path of the origin folder</param>
+        /// <param name="newRelativeFolderPath">The new path where will be located</param>
+        /// <returns>If the operation was successful</returns>
         Task<bool> MoveOrRenameFolder(string oldRelativeFolderPath, string newRelativeFolderPath);
 
         /// <summary>
@@ -56,9 +72,9 @@ namespace DriveAPI.Services.Interfaces
         Task<bool> DeleteFile(string relativeFilePath);
 
         /// <summary>
-        /// Deletes a folder and all its content from the system
+        /// Deletes a folder and all its content in the system
         /// </summary>
-        /// <param name="relativeFolderPath">The relative path where th folder is located</param>
+        /// <param name="relativeFolderPath">The relative path where the folder is located</param>
         /// <returns>If the folder was successfully deleted</returns>
         Task<bool> DeleteFolder(string relativeFolderPath);
     }

@@ -19,18 +19,11 @@ namespace DriveAPI.Controllers
     [ApiController]
     public class RegistersController : ControllerBase
     {
-        private readonly DriveDbContext _context;
         private readonly IRegisterService _registerService;
-        private readonly IUserFilesService _userFilesService;
 
-        public RegistersController(
-            DriveDbContext context,
-            IRegisterService registerService,
-            IUserFilesService userFilesService)
+        public RegistersController(IRegisterService registerService)
         {
-            _context = context;
             _registerService = registerService;
-            _userFilesService = userFilesService;
         }
 
         // GET: api/Registers
@@ -132,6 +125,41 @@ namespace DriveAPI.Controllers
             return Ok(registerChanged);
         }
 
+        // PUT: api/Registers/Move
+        [HttpPut("Move")]
+        public async Task<IActionResult> MoveRegister(MoveRegisterRequest request)
+        {
+            var userIdString = JWTUtility.GetUserId(User);
+            if (userIdString == null) return BadRequest();
+
+            var userId = int.Parse(userIdString);
+
+            // Check if the register and destiny folder belong to the user.
+            if (!await _registerService.DoesRegisterBelongToUser(userId, registerId: request.RegisterId) ||
+                (request.DestinyFolderId.HasValue &&
+                    !await _registerService.DoesFolderBelongToUser(userId, folderId: request.DestinyFolderId.Value)))
+                return BadRequest();
+            
+            // Check if the destiny folder is a sub folder of the origin folder
+            if (request.DestinyFolderId.HasValue &&
+                await _registerService.IsDestinyFolderASubFolderOfFolderToMove(folderToMoveId: request.RegisterId, destinyFolderId: request.DestinyFolderId.Value))
+                return BadRequest(Texts.DESTINY_FOLDER_IS_SUB_FOLDER_OF_ORIGIN_FOLDER);
+
+            var nameOfRegister = await _registerService.GetNameOfRegister(registerId: request.RegisterId);
+
+            if(nameOfRegister == null) return StatusCode(statusCode: 500, value: Texts.ERROR_MOVING_REGISTER);
+
+            // Check if the name of the register to move already exists in the destiny folder.
+            if (await _registerService.DoesFileOrFolderAlreadyExist(userId, name: nameOfRegister, parentFolder: request.DestinyFolderId))
+                return BadRequest(Texts.FILE_FOLDER_ALREADY_EXISTS_IN_DESTINY);
+
+            var registerChanged = await _registerService.MoveRegister(userId, request);
+
+            if (registerChanged == null) return StatusCode(statusCode: 500, value: Texts.ERROR_MOVING_REGISTER);
+
+            return Ok(registerChanged);
+        }
+
         // POST: api/Registers/AddFile
         [HttpPost("AddFile")]
         public async Task<IActionResult> AddFile([FromForm] AddFileRequest request)
@@ -214,11 +242,6 @@ namespace DriveAPI.Controllers
             if(registerDeleted == null) return StatusCode(statusCode: 500, value: Texts.ERROR_DELETING_ELEMENT);
 
             return Ok(registerDeleted);
-        }
-
-        private bool RegisterExists(int id)
-        {
-            return _context.Register.Any(e => e.Id == id);
         }
     }
 }

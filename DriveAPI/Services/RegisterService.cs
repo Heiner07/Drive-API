@@ -212,6 +212,60 @@ namespace DriveAPI.Services
             return null;
         }
 
+        public async Task<Register> MoveRegister(int userId, MoveRegisterRequest request)
+        {
+            var registerToChange = await _context.Register.Where(
+                register => register.Id == request.RegisterId && register.Author == userId
+            ).FirstOrDefaultAsync();
+
+            if (registerToChange == null) return null;
+
+            var newRelativePath = await GenerateNewRelativePathForMoveRegister(registerToChange, destinyFolderId: request.DestinyFolderId);
+            if (newRelativePath == null) return null;
+
+            if (registerToChange.IsFolder)
+            {
+                // Move the folder with the service.
+                var folderChanged = await _userFilesService.MoveOrRenameFolder(registerToChange.PathOrUrl, newRelativePath);
+
+                if (!folderChanged) return null;
+
+                // Change the parent folder of the register
+                registerToChange.ParentFolder = request.DestinyFolderId;
+                //Replace the relative path of the register and its subregisters (recursively)
+                await ChangeRelativePathOfSubRegisters(
+                    register: registerToChange,
+                    oldRelativePath: registerToChange.PathOrUrl,
+                    newRelativePath: newRelativePath
+                );
+            }
+            else
+            {
+                // Move the file with the service.
+                var fileChanged = await _userFilesService.MoveOrRenameFile(registerToChange.PathOrUrl, newRelativePath);
+
+                if (!fileChanged) return null;
+
+                // Change the parent folder of the register
+                registerToChange.ParentFolder = request.DestinyFolderId;
+
+                registerToChange.PathOrUrl = registerToChange.PathOrUrl.Replace(
+                    registerToChange.PathOrUrl, newRelativePath
+                );
+
+                _context.Register.Update(registerToChange);
+            }
+
+            var entriesWritten = await _context.SaveChangesAsync();
+
+            // To prevent a possible object cycle when serialize this object in the controller's response
+            registerToChange.InverseParentFolderNavigation = null;
+
+            if (entriesWritten > 0) return registerToChange;
+
+            return null;
+        }
+
         public async Task<IEnumerable<Register>> GetSubRegistersFromFolder(int userId, int? folderId)
         {
             var subRegisters = await _context.Register.Where(
@@ -281,9 +335,62 @@ namespace DriveAPI.Services
             var register = await _context.Register.Where(r => r.Id == registerId)
                 .AsNoTracking().FirstOrDefaultAsync();
 
+            // Important: Since the return type is int?, throwing an exception might be better
+            // than returning a null, when an error happens.
             if (register == null) return null;
 
             return register.ParentFolder;
+        }
+
+        public async Task<string> GetNameOfRegister(int registerId)
+        {
+            var register = await _context.Register.Where(r => r.Id == registerId)
+                .AsNoTracking().FirstOrDefaultAsync();
+
+            if (register == null) return null;
+
+            return register.Name;
+        }
+
+        public async Task<bool> IsDestinyFolderASubFolderOfFolderToMove(int folderToMoveId, int destinyFolderId)
+        {
+            var registerToMove = await _context.Register.Where(r => r.Id == folderToMoveId)
+                .AsNoTracking().FirstOrDefaultAsync();
+
+            // Throwing an exception might be better to manage the error.
+            if (registerToMove == null) return false;
+
+            // If the register is a file, it is not a sub folder
+            if (!registerToMove.IsFolder) return false;
+
+            var subFoldersOfFolderToMove = await _context.Register.Where(
+                r => r.ParentFolder == folderToMoveId).AsNoTracking().ToArrayAsync();
+            
+            return await FindSubFolderWithId(destinyFolderId, subFoldersOfFolderToMove);
+        }
+
+        private async Task<bool> FindSubFolderWithId(int id, ICollection<Register> subRegisters)
+        {
+            if (subRegisters == null) return false;
+
+            foreach (var subRegister in subRegisters)
+            {
+                if(subRegister.Id == id)
+                {
+                    return true;
+                }
+                else
+                {
+                    var subFoldersOfSubRegister = await _context.Register.Where(r => r.ParentFolder == subRegister.Id && r.IsFolder)
+                        .AsNoTracking().ToArrayAsync();
+                    if(await FindSubFolderWithId(id, subFoldersOfSubRegister))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -331,6 +438,24 @@ namespace DriveAPI.Services
                 $"{parentFolderId}-{registerToChange.Name}",
                 $"{parentFolderId}-{newName}"
             );
+        }
+
+        private async Task<string> GenerateNewRelativePathForMoveRegister(Register registerToChange, int? destinyFolderId)
+        {
+            Register destinyFolder = null;
+            if (destinyFolderId.HasValue)
+            {
+                destinyFolder = await _context.Register.Where(r => r.Id == destinyFolderId && r.IsFolder)
+                .AsNoTracking().FirstOrDefaultAsync();
+
+                if (destinyFolder == null) return null;
+            }
+
+            // 0 for user's root folder
+            int parentFolderId = destinyFolder == null ? 0 : destinyFolder.Id;
+            string path = destinyFolder == null ? registerToChange.Author.ToString() : destinyFolder.PathOrUrl;
+
+            return Path.Combine(path, $"{parentFolderId}-{registerToChange.Name}");
         }
     }
 }
