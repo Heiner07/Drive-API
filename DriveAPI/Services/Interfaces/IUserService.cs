@@ -31,6 +31,8 @@ namespace DriveAPI.Services.Interfaces
 
         Task<bool> DoesUserExist(int id);
 
+        Task<bool> OldPasswordIsCorrect(int userId, EditUserRequest request);
+
         /// <summary>
         /// Edit a user according to the data in the request
         /// </summary>

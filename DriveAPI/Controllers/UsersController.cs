@@ -67,7 +67,8 @@ namespace DriveAPI.Controllers
             if (!await _userService.DoesUserExist(id: userId))
                 return NotFound();
 
-            //ToDo: Check if the password are correct or separate a method only for change name and lastname
+            if (!await _userService.OldPasswordIsCorrect(userId, request))
+                return BadRequest(Texts.PASSWORD_IS_NOT_CORRECT);
 
             if (await _userService.EditUser(id: userId, request: request))
                 return Ok();

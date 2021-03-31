@@ -22,5 +22,6 @@ namespace DriveAPI.Constants
         public const string ERROR_MOVING_REGISTER = "Error moving the register";
         public const string FILE_FOLDER_ALREADY_EXISTS_IN_DESTINY = "A file or folder with that name already exists in the destiny folder";
         public const string DESTINY_FOLDER_IS_SUB_FOLDER_OF_ORIGIN_FOLDER = "The destiny folder is a sub folder of origin folder";
+        public const string PASSWORD_IS_NOT_CORRECT = "Password is not correct";
     }
 }

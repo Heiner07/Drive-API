@@ -95,17 +95,36 @@ namespace DriveAPI.Services
             return await _context.UserDrive.AnyAsync(user => user.Id == id);
         }
 
+        public async Task<bool> OldPasswordIsCorrect(int userId, EditUserRequest request)
+        {
+            string encryptedPassword = EncrypterUtility.StringToSHA256String(value: request.Password);
+
+            var userFound = await _context.UserDrive.Where(user => user.Id == userId)
+                .AsNoTracking().FirstOrDefaultAsync();
+
+            if (userFound == null) return false;
+
+            return userFound.Password == request.Password;
+        }
+
         public async Task<bool> EditUser(int id, EditUserRequest request)
         {
             var userToEdit = await _context.UserDrive.Where(user => user.Id == id).FirstOrDefaultAsync();
 
             if (userToEdit == null) return false;
 
-            string encryptedPassword = EncrypterUtility.StringToSHA256String(value: request.Password);
+            string encryptedPassword = null;
+            if(request.NewPassword != null && request.NewPassword.Trim().Length > 0)
+            {
+                encryptedPassword = EncrypterUtility.StringToSHA256String(value: request.NewPassword);
+            }
 
             userToEdit.Name = request.Name;
             userToEdit.Lastname = request.Lastname;
-            userToEdit.Password = encryptedPassword;
+            if(encryptedPassword != null)
+            {
+                userToEdit.Password = encryptedPassword;
+            }
 
             _context.UserDrive.Update(userToEdit);
             

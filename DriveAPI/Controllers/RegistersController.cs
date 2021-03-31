@@ -98,7 +98,7 @@ namespace DriveAPI.Controllers
 
         // PUT: api/Registers/ChangeName
         [HttpPut("ChangeName")]
-        public async Task<IActionResult> ChangeRegisterName(ChangeRegisterNameRequest request)
+        public async Task<IActionResult> ChangeRegisterName([FromBody] ChangeRegisterNameRequest request)
         {
             var userIdString = JWTUtility.GetUserId(User);
             if (userIdString == null) return BadRequest();
@@ -127,7 +127,7 @@ namespace DriveAPI.Controllers
 
         // PUT: api/Registers/Move
         [HttpPut("Move")]
-        public async Task<IActionResult> MoveRegister(MoveRegisterRequest request)
+        public async Task<IActionResult> MoveRegister([FromBody] MoveRegisterRequest request)
         {
             var userIdString = JWTUtility.GetUserId(User);
             if (userIdString == null) return BadRequest();
