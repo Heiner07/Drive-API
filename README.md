@@ -10,8 +10,8 @@ A .NET WEB API similar to Google Drive where the registered users can create fol
 
 ## Endpoints information / Información de los endpoints
 
-| Http Request	| Endpoint					| Request Data in| Request Data	| Response Data	| Description	|
-| --------------| --------------------------| ---------------| -------------| --------------| --------------|
+| Http Request	| Endpoint					| Request Data in	| Request Data	| Response Data	| Description			|
+| --------------| --------------------------| ------------------| --------------| --------------| ----------------------|
 | GET			| "/api/Users/Login"		| Body			 | [AuthenticationRequest](https://github.com/Heiner07/Drive-API/blob/main/DriveAPI/Models/Requests/AuthenticationRequest.cs) | [AuthenticatedUser](https://github.com/Heiner07/Drive-API/blob/main/DriveAPI/Models/AuthenticatedUser.cs) | Authenticates a user |
 | POST			| "/api/Users/Register"		| Body			 | [RegisterUserRequest](https://github.com/Heiner07/Drive-API/blob/main/DriveAPI/Models/Requests/RegisterUserRequest.cs) | [AuthenticatedUser](https://github.com/Heiner07/Drive-API/blob/main/DriveAPI/Models/AuthenticatedUser.cs) | Registers a user |
 | PUT			| "/api/Users"				| Body			 | [EditUserRequest](https://github.com/Heiner07/Drive-API/blob/main/DriveAPI/Models/Requests/EditUserRequest.cs)| Only the HTTP Code (200, 400, etc) | Edits a user |
@@ -28,7 +28,7 @@ When an id is needed and you want to refer the user's root folder, it will be 0 
 
 ## Important Points / Puntos importantes
 
-- The implementation can be improve in some aspects. For example:
+- The implementation can be improved in some aspects. For example:
 - This implementation maps the folders in the physical disk on the server such as the user sees on a client app.
 - A better approach could be manage the folders only in the database, in a logical way.
 - Use the unique id of each register as name on the disk could be a better option than the name assigned by the user (even when the name is validated in this implementation).
