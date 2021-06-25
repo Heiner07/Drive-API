@@ -33,7 +33,7 @@ When an id is needed and you want to refer the user's root folder, it will be 0 
 - A better approach could be manage the folders only in the database, in a logical way.
 - Use the unique id of each register as name on the disk could be a better option than the name assigned by the user (even when the name is validated in this implementation).
 - Scan each file that is uploaded to the server, with an antivirus, is something to consider to protect the server and users.
-- Use of cloud services to store all the files is defenetly a better option, for example: Amazon S3, Azure Storage or Firestore.
+- Use of cloud services to store all the files is definitely a better option, for example: Amazon S3, Azure Storage or Firestore.
 - Use of Swagger in the project for documentation, etc.
 
 Note: WeatherForecastController was not intentionally removed just to see something when the project loads :)
