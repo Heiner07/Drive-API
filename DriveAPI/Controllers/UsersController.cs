@@ -27,7 +27,7 @@ namespace DriveAPI.Controllers
         }
 
         // GET api/<UsersController>/Login
-        [HttpGet("Login")]
+        [HttpPost("Login"), HttpGet("Login")]
         public async Task<IActionResult> Login([FromBody] AuthenticationRequest authenticationRequest)
         {
             var authenticatedUser = await _userService.AuthenticateUser(request: authenticationRequest);

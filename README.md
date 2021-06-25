@@ -1,18 +1,18 @@
 # Drive-API
 A .NET WEB API similar to Google Drive where the registered users can create folders and upload files / Una API WEB .NET similar a Google Drive donde los usuarios registrados pueden crear carpetas y cargar archivos.
 
-## Some features / Algunas características
+## Some features / Algunas caracterÃ­sticas
 
 - User account management (Register, Login, Edit User) with JWT (Json web token).
 - Users can create folders and upload (and download) files to their accounts.
 - Endpoints to rename, delete and move files and folders.
 - Developed in .NET Core 3.2 (It should work in this version or higher).
 
-## Endpoints information / Información de los endpoints
+## Endpoints information / InformaciÃ³n de los endpoints
 
 | Http Request	| Endpoint					| Request Data in	| Request Data	| Response Data	| Description			|
 | --------------| --------------------------| ------------------| --------------| --------------| ----------------------|
-| GET			| "/api/Users/Login"		| Body			 | [AuthenticationRequest](https://github.com/Heiner07/Drive-API/blob/main/DriveAPI/Models/Requests/AuthenticationRequest.cs) | [AuthenticatedUser](https://github.com/Heiner07/Drive-API/blob/main/DriveAPI/Models/AuthenticatedUser.cs) | Authenticates a user |
+| POST/GET			| "/api/Users/Login"		| Body			 | [AuthenticationRequest](https://github.com/Heiner07/Drive-API/blob/main/DriveAPI/Models/Requests/AuthenticationRequest.cs) | [AuthenticatedUser](https://github.com/Heiner07/Drive-API/blob/main/DriveAPI/Models/AuthenticatedUser.cs) | Authenticates a user |
 | POST			| "/api/Users/Register"		| Body			 | [RegisterUserRequest](https://github.com/Heiner07/Drive-API/blob/main/DriveAPI/Models/Requests/RegisterUserRequest.cs) | [AuthenticatedUser](https://github.com/Heiner07/Drive-API/blob/main/DriveAPI/Models/AuthenticatedUser.cs) | Registers a user |
 | PUT			| "/api/Users"				| Body			 | [EditUserRequest](https://github.com/Heiner07/Drive-API/blob/main/DriveAPI/Models/Requests/EditUserRequest.cs)| Only the HTTP Code (200, 400, etc) | Edits a user |
 | GET			| "/api/Registers/FromFolder/{id}" | Query parameter | An integer | [A list of Registers](https://github.com/Heiner07/Drive-API/blob/main/DriveAPI/Database/Register.cs) | Gets all the Registers (folders and files) form a folder (0 for user's root folder) |
